@@ -890,6 +890,195 @@ header {
   box-shadow: var(--box-shadow-hover);
 }
 
+/* Download Resume Button */
+.download-resume-btn {
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  box-shadow: var(--box-shadow);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.download-resume-btn:hover {
+  background-color: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: var(--box-shadow-hover);
+}
+
+/* Admin Resume Section */
+.admin-resume-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.admin-resume-btn {
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  font-size: 0.9rem;
+  box-shadow: var(--box-shadow);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-resume-btn:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: var(--box-shadow-hover);
+}
+
+.resume-last-updated {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.resume-last-updated i {
+  color: #10b981;
+}
+
+/* Resume Upload Modal */
+.resume-upload-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.resume-upload-modal {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.resume-modal-header {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+  color: white;
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.resume-modal-header h3 {
+  margin: 0;
+  color: white;
+}
+
+.close-modal-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.close-modal-btn:hover {
+  transform: scale(1.2);
+}
+
+.resume-modal-content {
+  padding: 2rem;
+  text-align: center;
+}
+
+.resume-modal-content p {
+  margin-bottom: 1.5rem;
+  color: var(--text-light);
+}
+
+.resume-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  border: 2px dashed var(--accent-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background-color: rgba(37, 99, 235, 0.05);
+}
+
+.resume-upload-label:hover {
+  background-color: rgba(37, 99, 235, 0.1);
+  border-color: var(--secondary-color);
+}
+
+.resume-upload-label i {
+  font-size: 2.5rem;
+  color: var(--accent-color);
+  margin-bottom: 0.5rem;
+}
+
+.resume-upload-label span {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+.resume-upload-input {
+  display: none;
+}
+
+.resume-file-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background-color: #f0fdf4;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #059669;
+  font-weight: 500;
+}
+
+.resume-file-info i {
+  font-size: 1.2rem;
+}
+
+.resume-modal-actions {
+  padding: 1.5rem;
+  border-top: 1px solid var(--neutral-light);
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
+
 .share-menu {
   position: absolute;
   top: 100%;

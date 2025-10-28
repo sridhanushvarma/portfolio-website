@@ -3,15 +3,24 @@ import { motion } from 'framer-motion';
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
-// IndexedDB setup for profile image storage
+// IndexedDB setup for profile image and resume storage
 const openProfileImageDB = () => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('ProfileImageDB', 1);
+    // Check if IndexedDB is available (not available in test environment)
+    if (typeof indexedDB === 'undefined') {
+      reject(new Error('IndexedDB is not available'));
+      return;
+    }
+
+    const request = indexedDB.open('ProfileImageDB', 2);
 
     request.onupgradeneeded = (event) => {
       const db = event.target.result;
       if (!db.objectStoreNames.contains('profileImages')) {
         db.createObjectStore('profileImages', { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains('resumes')) {
+        db.createObjectStore('resumes', { keyPath: 'id' });
       }
     };
 
@@ -92,6 +101,72 @@ const getProfileImageFromDB = async () => {
   }
 };
 
+// Function to save resume to IndexedDB
+const saveResumeToDB = async (resumeData, fileName) => {
+  try {
+    const db = await openProfileImageDB();
+    const transaction = db.transaction(['resumes'], 'readwrite');
+    const store = transaction.objectStore('resumes');
+
+    const resumeRecord = {
+      id: 'currentResume',
+      data: resumeData,
+      fileName: fileName,
+      timestamp: Date.now()
+    };
+
+    return new Promise((resolve, reject) => {
+      const request = store.put(resumeRecord);
+
+      request.onsuccess = () => {
+        localStorage.setItem('resume', resumeData);
+        localStorage.setItem('resumeFileName', fileName);
+        localStorage.setItem('resumeTimestamp', resumeRecord.timestamp.toString());
+        resolve();
+      };
+
+      request.onerror = (event) => {
+        console.error('Error saving to IndexedDB:', event.target.error);
+        reject(event.target.error);
+      };
+    });
+  } catch (error) {
+    console.error('Failed to save resume to IndexedDB:', error);
+    localStorage.setItem('resume', resumeData);
+    localStorage.setItem('resumeFileName', fileName);
+    localStorage.setItem('resumeTimestamp', Date.now().toString());
+  }
+};
+
+// Function to get resume from IndexedDB
+const getResumeFromDB = async () => {
+  try {
+    const db = await openProfileImageDB();
+    const transaction = db.transaction(['resumes'], 'readonly');
+    const store = transaction.objectStore('resumes');
+
+    return new Promise((resolve, reject) => {
+      const request = store.get('currentResume');
+
+      request.onsuccess = (event) => {
+        if (event.target.result) {
+          resolve(event.target.result);
+        } else {
+          resolve(null);
+        }
+      };
+
+      request.onerror = (event) => {
+        console.error('Error retrieving from IndexedDB:', event.target.error);
+        reject(event.target.error);
+      };
+    });
+  } catch (error) {
+    console.error('Failed to get resume from IndexedDB:', error);
+    return null;
+  }
+};
+
 const Header = () => {
   const [imageLoaded, setImageLoaded] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -103,6 +178,10 @@ const Header = () => {
   const [completedCrop, setCompletedCrop] = useState(null);
   const [profileImage, setProfileImage] = useState('https://github.com/Sridhanush-Varma.png');
   const [lastUpdated, setLastUpdated] = useState(null);
+  const [resumeData, setResumeData] = useState(null);
+  const [resumeFileName, setResumeFileName] = useState('resume.pdf');
+  const [resumeLastUpdated, setResumeLastUpdated] = useState(null);
+  const [showResumeUploadModal, setShowResumeUploadModal] = useState(false);
   const imgRef = useRef(null);
   const previewCanvasRef = useRef(null);
   const ADMIN_PASSWORD = "Deepika@04";
@@ -172,6 +251,43 @@ const Header = () => {
 
     // Clean up interval on component unmount
     return () => clearInterval(updateInterval);
+  }, []);
+
+  // Load resume on component mount
+  useEffect(() => {
+    const loadResume = async () => {
+      try {
+        const resumeRecord = await getResumeFromDB();
+
+        if (resumeRecord && resumeRecord.data) {
+          setResumeData(resumeRecord.data);
+          setResumeFileName(resumeRecord.fileName || 'resume.pdf');
+          setResumeLastUpdated(new Date(resumeRecord.timestamp).toLocaleString());
+          localStorage.setItem('resume', resumeRecord.data);
+          localStorage.setItem('resumeFileName', resumeRecord.fileName);
+          localStorage.setItem('resumeTimestamp', resumeRecord.timestamp.toString());
+        } else {
+          const savedResume = localStorage.getItem('resume');
+          const savedFileName = localStorage.getItem('resumeFileName');
+          const savedTimestamp = localStorage.getItem('resumeTimestamp');
+          if (savedResume) {
+            setResumeData(savedResume);
+            setResumeFileName(savedFileName || 'resume.pdf');
+            if (savedTimestamp) {
+              setResumeLastUpdated(new Date(parseInt(savedTimestamp, 10)).toLocaleString());
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading resume:', error);
+        const savedResume = localStorage.getItem('resume');
+        if (savedResume) {
+          setResumeData(savedResume);
+        }
+      }
+    };
+
+    loadResume();
   }, []);
 
   // Update preview canvas when crop changes
@@ -398,6 +514,68 @@ const Header = () => {
     setImgSrc('');
   };
 
+  // Function to handle resume file selection
+  const onSelectResumeFile = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        alert('Please select a valid PDF file.');
+        return;
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const resumeDataUrl = reader.result.toString();
+          setResumeData(resumeDataUrl);
+          setResumeFileName(file.name);
+          const now = new Date();
+          setResumeLastUpdated(now.toLocaleString());
+
+          // Save to IndexedDB
+          await saveResumeToDB(resumeDataUrl, file.name);
+
+          alert('Resume uploaded successfully! The new resume will be available to all visitors.');
+          setShowResumeUploadModal(false);
+        } catch (error) {
+          console.error('Error saving resume:', error);
+          alert(`Failed to save the resume: ${error.message}. Please try again.`);
+        }
+      };
+      reader.onerror = () => {
+        console.error('Error reading file');
+        alert('Error reading the selected file. Please try again.');
+      };
+      reader.readAsDataURL(file);
+
+      // Reset the input value
+      e.target.value = '';
+    }
+  };
+
+  // Function to download resume
+  const downloadResume = () => {
+    if (!resumeData) {
+      alert('No resume available for download.');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = resumeData;
+    link.download = resumeFileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const shareProfile = (platform) => {
     const profileUrl = window.location.href;
     const text = "Check out Sridhanush Varma's portfolio!";
@@ -434,6 +612,14 @@ const Header = () => {
         </nav>
 
         <div className="header-actions">
+          <button
+            className="download-resume-btn"
+            onClick={downloadResume}
+            title="Download Resume"
+          >
+            <i className="fas fa-download"></i> Download Resume
+          </button>
+
           <div className="share-container">
             <button
               className="share-btn"
@@ -501,7 +687,69 @@ const Header = () => {
               </div>
             )}
           </div>
+
+          {isAdmin && (
+            <div className="admin-resume-section">
+              <button
+                className="admin-resume-btn"
+                onClick={() => setShowResumeUploadModal(true)}
+                title="Upload Resume"
+              >
+                <i className="fas fa-file-pdf"></i> Upload Resume
+              </button>
+              {resumeLastUpdated && (
+                <div className="resume-last-updated">
+                  <i className="fas fa-clock"></i> Resume Updated: {resumeLastUpdated}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Resume Upload Modal */}
+        {showResumeUploadModal && (
+          <div className="resume-upload-modal-overlay">
+            <div className="resume-upload-modal">
+              <div className="resume-modal-header">
+                <h3>Upload Resume</h3>
+                <button
+                  className="close-modal-btn"
+                  onClick={() => setShowResumeUploadModal(false)}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+              <div className="resume-modal-content">
+                <p>Select a PDF file to upload as your resume</p>
+                <label htmlFor="resume-upload" className="resume-upload-label">
+                  <i className="fas fa-cloud-upload-alt"></i>
+                  <span>Click to select PDF file</span>
+                  <input
+                    id="resume-upload"
+                    type="file"
+                    accept=".pdf"
+                    className="resume-upload-input"
+                    onChange={onSelectResumeFile}
+                  />
+                </label>
+                {resumeFileName && (
+                  <div className="resume-file-info">
+                    <i className="fas fa-file-pdf"></i>
+                    <span>{resumeFileName}</span>
+                  </div>
+                )}
+              </div>
+              <div className="resume-modal-actions">
+                <button
+                  className="cancel-btn"
+                  onClick={() => setShowResumeUploadModal(false)}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Image Crop Modal */}
         {showCropModal && (
