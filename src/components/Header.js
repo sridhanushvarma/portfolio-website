@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
-import { saveProfileImageToDB, loadProfileImageFromDB, saveResumeToDB, loadResumeFromDB } from '../utils/indexedDB';
+import { saveProfileImageToFirebase, loadProfileImageFromFirebase, saveResumeToFirebase, loadResumeFromFirebase } from '../utils/firebase';
 
 // Helper function to check if a static file exists
 const checkStaticFileExists = async (url) => {
@@ -50,11 +50,11 @@ const Header = () => {
   useEffect(() => {
     const loadProfileImage = async () => {
       try {
-        // First, try to load from IndexedDB (this is the shared storage for all users)
-        const dbImage = await loadProfileImageFromDB();
-        if (dbImage) {
-          console.log('Loading profile image from IndexedDB');
-          setProfileImage(dbImage);
+        // First, try to load from Firebase (this is the shared storage for all users)
+        const firebaseImage = await loadProfileImageFromFirebase();
+        if (firebaseImage) {
+          console.log('Loading profile image from Firebase');
+          setProfileImage(firebaseImage);
           return;
         }
 
@@ -92,12 +92,12 @@ const Header = () => {
   useEffect(() => {
     const loadResume = async () => {
       try {
-        // First, try to load from IndexedDB (this is the shared storage for all users)
-        const dbResume = await loadResumeFromDB();
-        if (dbResume) {
-          console.log('Loading resume from IndexedDB');
-          setResumeData(dbResume.data);
-          setResumeFileName(dbResume.fileName);
+        // First, try to load from Firebase (this is the shared storage for all users)
+        const firebaseResume = await loadResumeFromFirebase();
+        if (firebaseResume) {
+          console.log('Loading resume from Firebase');
+          setResumeData(firebaseResume.data);
+          setResumeFileName(firebaseResume.fileName);
           return;
         }
 
@@ -318,10 +318,10 @@ const Header = () => {
 
       console.log('UI updated with new image');
 
-      // Save to IndexedDB for persistence across all users
-      await saveProfileImageToDB(croppedImageData);
+      // Save to Firebase for persistence across all users
+      await saveProfileImageToFirebase(croppedImageData);
 
-      console.log('Image saved to database');
+      console.log('Image saved to Firebase');
 
       // Close the modal and reset state
       setShowCropModal(false);
@@ -367,8 +367,8 @@ const Header = () => {
           const now = new Date();
           setResumeLastUpdated(now.toLocaleString());
 
-          // Save to IndexedDB
-          await saveResumeToDB(resumeDataUrl, file.name);
+          // Save to Firebase
+          await saveResumeToFirebase(resumeDataUrl, file.name);
 
           alert('Resume uploaded successfully! The new resume will be available to all visitors.');
           setShowResumeUploadModal(false);
