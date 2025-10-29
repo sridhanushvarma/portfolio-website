@@ -14,7 +14,8 @@ const checkStaticFileExists = async (url) => {
   }
 };
 
-// Helper function to download a file
+// Helper function to download a file (used by downloadResume)
+// eslint-disable-next-line no-unused-vars
 const downloadFile = (dataUrl, filename) => {
   const link = document.createElement('a');
   link.href = dataUrl;
@@ -39,6 +40,7 @@ const Header = () => {
   const [resumeFileName, setResumeFileName] = useState('resume.pdf');
   const [resumeLastUpdated, setResumeLastUpdated] = useState(null);
   const [showResumeUploadModal, setShowResumeUploadModal] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [showInstructions, setShowInstructions] = useState(false);
   const imgRef = useRef(null);
   const previewCanvasRef = useRef(null);
