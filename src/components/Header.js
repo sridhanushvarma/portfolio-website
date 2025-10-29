@@ -2,169 +2,26 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import { saveProfileImageToDB, loadProfileImageFromDB, saveResumeToDB, loadResumeFromDB } from '../utils/indexedDB';
 
-// IndexedDB setup for profile image and resume storage
-const openProfileImageDB = () => {
-  return new Promise((resolve, reject) => {
-    // Check if IndexedDB is available (not available in test environment)
-    if (typeof indexedDB === 'undefined') {
-      reject(new Error('IndexedDB is not available'));
-      return;
-    }
-
-    const request = indexedDB.open('ProfileImageDB', 2);
-
-    request.onupgradeneeded = (event) => {
-      const db = event.target.result;
-      if (!db.objectStoreNames.contains('profileImages')) {
-        db.createObjectStore('profileImages', { keyPath: 'id' });
-      }
-      if (!db.objectStoreNames.contains('resumes')) {
-        db.createObjectStore('resumes', { keyPath: 'id' });
-      }
-    };
-
-    request.onsuccess = (event) => {
-      resolve(event.target.result);
-    };
-
-    request.onerror = (event) => {
-      console.error('IndexedDB error:', event.target.error);
-      reject(event.target.error);
-    };
-  });
-};
-
-// Function to save profile image to IndexedDB
-const saveProfileImageToDB = async (imageData) => {
+// Helper function to check if a static file exists
+const checkStaticFileExists = async (url) => {
   try {
-    const db = await openProfileImageDB();
-    const transaction = db.transaction(['profileImages'], 'readwrite');
-    const store = transaction.objectStore('profileImages');
-
-    // Save with timestamp for versioning
-    const imageRecord = {
-      id: 'currentProfileImage',
-      data: imageData,
-      timestamp: Date.now()
-    };
-
-    return new Promise((resolve, reject) => {
-      const request = store.put(imageRecord);
-
-      request.onsuccess = () => {
-        // Also save to localStorage as a fallback and for quicker access
-        localStorage.setItem('profileImage', imageData);
-        localStorage.setItem('profileImageTimestamp', imageRecord.timestamp.toString());
-        resolve();
-      };
-
-      request.onerror = (event) => {
-        console.error('Error saving to IndexedDB:', event.target.error);
-        reject(event.target.error);
-      };
-    });
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
   } catch (error) {
-    console.error('Failed to save profile image to IndexedDB:', error);
-    // Fallback to localStorage only
-    localStorage.setItem('profileImage', imageData);
-    localStorage.setItem('profileImageTimestamp', Date.now().toString());
+    return false;
   }
 };
 
-// Function to get profile image from IndexedDB
-const getProfileImageFromDB = async () => {
-  try {
-    const db = await openProfileImageDB();
-    const transaction = db.transaction(['profileImages'], 'readonly');
-    const store = transaction.objectStore('profileImages');
-
-    return new Promise((resolve, reject) => {
-      const request = store.get('currentProfileImage');
-
-      request.onsuccess = (event) => {
-        if (event.target.result) {
-          resolve(event.target.result);
-        } else {
-          resolve(null);
-        }
-      };
-
-      request.onerror = (event) => {
-        console.error('Error retrieving from IndexedDB:', event.target.error);
-        reject(event.target.error);
-      };
-    });
-  } catch (error) {
-    console.error('Failed to get profile image from IndexedDB:', error);
-    return null;
-  }
-};
-
-// Function to save resume to IndexedDB
-const saveResumeToDB = async (resumeData, fileName) => {
-  try {
-    const db = await openProfileImageDB();
-    const transaction = db.transaction(['resumes'], 'readwrite');
-    const store = transaction.objectStore('resumes');
-
-    const resumeRecord = {
-      id: 'currentResume',
-      data: resumeData,
-      fileName: fileName,
-      timestamp: Date.now()
-    };
-
-    return new Promise((resolve, reject) => {
-      const request = store.put(resumeRecord);
-
-      request.onsuccess = () => {
-        localStorage.setItem('resume', resumeData);
-        localStorage.setItem('resumeFileName', fileName);
-        localStorage.setItem('resumeTimestamp', resumeRecord.timestamp.toString());
-        resolve();
-      };
-
-      request.onerror = (event) => {
-        console.error('Error saving to IndexedDB:', event.target.error);
-        reject(event.target.error);
-      };
-    });
-  } catch (error) {
-    console.error('Failed to save resume to IndexedDB:', error);
-    localStorage.setItem('resume', resumeData);
-    localStorage.setItem('resumeFileName', fileName);
-    localStorage.setItem('resumeTimestamp', Date.now().toString());
-  }
-};
-
-// Function to get resume from IndexedDB
-const getResumeFromDB = async () => {
-  try {
-    const db = await openProfileImageDB();
-    const transaction = db.transaction(['resumes'], 'readonly');
-    const store = transaction.objectStore('resumes');
-
-    return new Promise((resolve, reject) => {
-      const request = store.get('currentResume');
-
-      request.onsuccess = (event) => {
-        if (event.target.result) {
-          resolve(event.target.result);
-        } else {
-          resolve(null);
-        }
-      };
-
-      request.onerror = (event) => {
-        console.error('Error retrieving from IndexedDB:', event.target.error);
-        reject(event.target.error);
-      };
-    });
-  } catch (error) {
-    console.error('Failed to get resume from IndexedDB:', error);
-    return null;
-  }
+// Helper function to download a file
+const downloadFile = (dataUrl, filename) => {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 };
 
 const Header = () => {
@@ -182,108 +39,76 @@ const Header = () => {
   const [resumeFileName, setResumeFileName] = useState('resume.pdf');
   const [resumeLastUpdated, setResumeLastUpdated] = useState(null);
   const [showResumeUploadModal, setShowResumeUploadModal] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
   const imgRef = useRef(null);
   const previewCanvasRef = useRef(null);
   const ADMIN_PASSWORD = "Deepika@04";
 
-  // Load profile image on component mount and check for updates
+  // Load profile image on component mount
   useEffect(() => {
     const loadProfileImage = async () => {
       try {
-        // First try to get from IndexedDB
-        const imageRecord = await getProfileImageFromDB();
-
-        if (imageRecord && imageRecord.data) {
-          setProfileImage(imageRecord.data);
-          setLastUpdated(new Date(imageRecord.timestamp).toLocaleString());
-          // Update localStorage with the latest data
-          localStorage.setItem('profileImage', imageRecord.data);
-          localStorage.setItem('profileImageTimestamp', imageRecord.timestamp.toString());
-        } else {
-          // Fallback to localStorage
-          const savedImage = localStorage.getItem('profileImage');
-          const savedTimestamp = localStorage.getItem('profileImageTimestamp');
-          if (savedImage) {
-            setProfileImage(savedImage);
-            if (savedTimestamp) {
-              setLastUpdated(new Date(parseInt(savedTimestamp, 10)).toLocaleString());
-            }
-          }
+        // First, try to load from IndexedDB (this is the shared storage for all users)
+        const dbImage = await loadProfileImageFromDB();
+        if (dbImage) {
+          console.log('Loading profile image from IndexedDB');
+          setProfileImage(dbImage);
+          return;
         }
+
+        // Try to load custom profile image from static directory
+        const profileImageUrl = `${process.env.PUBLIC_URL}/static/profile/profile.jpg`;
+        const profileImagePngUrl = `${process.env.PUBLIC_URL}/static/profile/profile.png`;
+
+        // Check if JPG exists
+        const jpgExists = await checkStaticFileExists(profileImageUrl);
+        if (jpgExists) {
+          setProfileImage(profileImageUrl);
+          return;
+        }
+
+        // Check if PNG exists
+        const pngExists = await checkStaticFileExists(profileImagePngUrl);
+        if (pngExists) {
+          setProfileImage(profileImagePngUrl);
+          return;
+        }
+
+        // If no custom image, use GitHub profile picture as default
+        setProfileImage('https://github.com/Sridhanush-Varma.png');
       } catch (error) {
         console.error('Error loading profile image:', error);
-        // Final fallback to localStorage
-        const savedImage = localStorage.getItem('profileImage');
-        if (savedImage) {
-          setProfileImage(savedImage);
-        }
+        // Fallback to GitHub profile picture
+        setProfileImage('https://github.com/Sridhanush-Varma.png');
       }
     };
 
-    // Load image immediately on mount
     loadProfileImage();
-
-    // Set up periodic check for updates (every 5 minutes)
-    // This ensures all visitors see the latest profile picture
-    const checkForUpdates = async () => {
-      try {
-        const imageRecord = await getProfileImageFromDB();
-        if (!imageRecord) return;
-
-        // Get current timestamp from localStorage
-        const currentTimestamp = parseInt(localStorage.getItem('profileImageTimestamp') || '0', 10);
-
-        // If the image in IndexedDB is newer, update the display
-        if (imageRecord.timestamp > currentTimestamp) {
-          setProfileImage(imageRecord.data);
-          setLastUpdated(new Date(imageRecord.timestamp).toLocaleString());
-          localStorage.setItem('profileImage', imageRecord.data);
-          localStorage.setItem('profileImageTimestamp', imageRecord.timestamp.toString());
-          console.log('Profile image updated to latest version');
-        }
-      } catch (error) {
-        console.error('Error checking for profile image updates:', error);
-      }
-    };
-
-    // Check for updates every 5 minutes
-    const updateInterval = setInterval(checkForUpdates, 5 * 60 * 1000);
-
-    // Clean up interval on component unmount
-    return () => clearInterval(updateInterval);
   }, []);
 
   // Load resume on component mount
   useEffect(() => {
     const loadResume = async () => {
       try {
-        const resumeRecord = await getResumeFromDB();
+        // First, try to load from IndexedDB (this is the shared storage for all users)
+        const dbResume = await loadResumeFromDB();
+        if (dbResume) {
+          console.log('Loading resume from IndexedDB');
+          setResumeData(dbResume.data);
+          setResumeFileName(dbResume.fileName);
+          return;
+        }
 
-        if (resumeRecord && resumeRecord.data) {
-          setResumeData(resumeRecord.data);
-          setResumeFileName(resumeRecord.fileName || 'resume.pdf');
-          setResumeLastUpdated(new Date(resumeRecord.timestamp).toLocaleString());
-          localStorage.setItem('resume', resumeRecord.data);
-          localStorage.setItem('resumeFileName', resumeRecord.fileName);
-          localStorage.setItem('resumeTimestamp', resumeRecord.timestamp.toString());
-        } else {
-          const savedResume = localStorage.getItem('resume');
-          const savedFileName = localStorage.getItem('resumeFileName');
-          const savedTimestamp = localStorage.getItem('resumeTimestamp');
-          if (savedResume) {
-            setResumeData(savedResume);
-            setResumeFileName(savedFileName || 'resume.pdf');
-            if (savedTimestamp) {
-              setResumeLastUpdated(new Date(parseInt(savedTimestamp, 10)).toLocaleString());
-            }
-          }
+        // Try to load resume from static directory
+        const resumeUrl = `${process.env.PUBLIC_URL}/static/resume/resume.pdf`;
+        const exists = await checkStaticFileExists(resumeUrl);
+
+        if (exists) {
+          setResumeData(resumeUrl);
+          setResumeFileName('resume.pdf');
         }
       } catch (error) {
         console.error('Error loading resume:', error);
-        const savedResume = localStorage.getItem('resume');
-        if (savedResume) {
-          setResumeData(savedResume);
-        }
       }
     };
 
