@@ -10,24 +10,34 @@ import { getDatabase, ref, set, get } from 'firebase/database';
 // Firebase configuration
 // These values should be replaced with your actual Firebase project credentials
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "AIzaSyDvKvKvKvKvKvKvKvKvKvKvKvKvKvKvKvKvKv",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "portfolio-website-xxxxx.firebaseapp.com",
-  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL || "https://portfolio-website-xxxxx.firebaseio.com",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "portfolio-website-xxxxx",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "portfolio-website-xxxxx.appspot.com",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "1:123456789:web:abcdefghijklmnop"
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  databaseURL: process.env.REACT_APP_FIREBASE_DATABASE_URL,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID
 };
+
+// Check if Firebase configuration is complete
+const isFirebaseConfigured = Object.values(firebaseConfig).every(value => value && value.trim && value.trim() !== '');
 
 // Initialize Firebase
 let app;
 let database;
 
-try {
-  app = initializeApp(firebaseConfig);
-  database = getDatabase(app);
-} catch (error) {
-  console.error('Firebase initialization error:', error);
+if (isFirebaseConfigured) {
+  try {
+    app = initializeApp(firebaseConfig);
+    database = getDatabase(app);
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+    console.warn('Firebase is not properly configured. Profile photo and resume uploads will not work.');
+  }
+} else {
+  console.warn('Firebase configuration is incomplete. Please set all required environment variables.');
+  console.warn('See GITHUB_SECRETS_SETUP.md for instructions on setting up GitHub Secrets.');
 }
 
 /**

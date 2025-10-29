@@ -21,3 +21,5 @@ yarn-error.log*
 
 #Markdown file
 FIREBASE_SETUP.md
+DEPLOYMENT_INSTRUCTIONS.md
+GITHUB_SECRETS_SETUP.md
