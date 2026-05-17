@@ -1,60 +1,139 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
+const EASE = [0.22, 1, 0.36, 1];
+
+const footerContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12, delayChildren: 0.15 } }
+};
+
+const footerSectionVariants = {
+  hidden: { opacity: 0, y: 28 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: EASE } }
+};
+
+const linkContainerVariants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.07, delayChildren: 0.2 } }
+};
+
+const linkVariants = {
+  hidden: { opacity: 0, x: -14 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE } }
+};
+
+const contactVariants = {
+  hidden: { opacity: 0, x: -14 },
+  visible: { opacity: 1, x: 0, transition: { duration: 0.4, ease: EASE } }
+};
+
 const Footer = () => {
   const currentYear = new Date().getFullYear();
 
   return (
     <motion.footer
       className="footer"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ delay: 0.5 }}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.65, ease: EASE }}
     >
-      <div className="footer-content">
-        <div className="footer-section">
+      <motion.div
+        className="footer-content"
+        variants={footerContainerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+      >
+        {/* About column */}
+        <motion.div className="footer-section" variants={footerSectionVariants}>
           <h3>Sridhanush Varma</h3>
-          <p>Full-Stack Developer & ML/NLP Specialist based in Hyderabad, India.</p>
-        </div>
+          <p>Full-Stack Developer &amp; ML/NLP Specialist based in Hyderabad, India.</p>
+        </motion.div>
 
-        <div className="footer-section">
+        {/* Quick links column */}
+        <motion.div className="footer-section" variants={footerSectionVariants}>
           <h3>Quick Links</h3>
-          <ul className="footer-links">
-            <li><a href="#summary">About</a></li>
-            <li><a href="#skills">Skills</a></li>
-            <li><a href="#education">Education</a></li>
-            <li><a href="#projects">Projects</a></li>
-          </ul>
-        </div>
+          <motion.ul
+            className="footer-links"
+            variants={linkContainerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {[
+              { label: 'About', href: '#summary' },
+              { label: 'Skills', href: '#skills' },
+              { label: 'Education', href: '#education' },
+              { label: 'Projects', href: '#projects' },
+            ].map(({ label, href }) => (
+              <motion.li key={label} variants={linkVariants}>
+                <a href={href}>{label}</a>
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
 
-        <div className="footer-section">
+        {/* Contact column */}
+        <motion.div className="footer-section" variants={footerSectionVariants}>
           <h3>Contact</h3>
-          <ul className="footer-contact">
-            <li><i className="fas fa-envelope"></i> sridhanushvarmasv@outlook.com</li>
-            <li><i className="fas fa-phone-alt"></i> 91+ 7799955255</li>
-            <li><i className="fas fa-map-marker-alt"></i> Hyderabad, India</li>
-          </ul>
-        </div>
+          <motion.ul
+            className="footer-contact"
+            variants={linkContainerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            {[
+              { icon: 'fas fa-envelope', text: 'sridhanushvarmasv@outlook.com' },
+              { icon: 'fas fa-phone-alt', text: '91+ 7799955255' },
+              { icon: 'fas fa-map-marker-alt', text: 'Hyderabad, India' },
+            ].map(({ icon, text }) => (
+              <motion.li key={text} variants={contactVariants}>
+                <i className={icon}></i> {text}
+              </motion.li>
+            ))}
+          </motion.ul>
+        </motion.div>
 
-        <div className="footer-section">
+        {/* Social column */}
+        <motion.div className="footer-section" variants={footerSectionVariants}>
           <h3>Connect</h3>
           <div className="footer-social">
-            <a href="https://github.com/Sridhanush-Varma" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-github"></i>
-            </a>
-            <a href="https://www.linkedin.com/in/sridhanush-varma/" target="_blank" rel="noopener noreferrer">
-              <i className="fab fa-linkedin-in"></i>
-            </a>
-            <a href="mailto:sridhanushvarmasv@outlook.com">
-              <i className="fas fa-envelope"></i>
-            </a>
+            {[
+              { href: 'https://github.com/Sridhanush-Varma', icon: 'fab fa-github' },
+              { href: 'https://www.linkedin.com/in/sridhanush-varma/', icon: 'fab fa-linkedin-in' },
+              { href: 'mailto:sridhanushvarmasv@outlook.com', icon: 'fas fa-envelope' },
+            ].map(({ href, icon }, i) => (
+              <motion.a
+                key={i}
+                href={href}
+                target={href.startsWith('http') ? '_blank' : undefined}
+                rel={href.startsWith('http') ? 'noopener noreferrer' : undefined}
+                initial={{ opacity: 0, scale: 0.7 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.4 + i * 0.1, duration: 0.45, ease: EASE }}
+                whileHover={{ rotate: 8, scale: 1.18, y: -5 }}
+                whileTap={{ scale: 0.88 }}
+              >
+                <i className={icon}></i>
+              </motion.a>
+            ))}
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
-      <div className="footer-bottom">
+      <motion.div
+        className="footer-bottom"
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.6, duration: 0.5, ease: EASE }}
+      >
         <p>&copy; {currentYear} Sridhanush Varma. All rights reserved.</p>
-      </div>
+      </motion.div>
     </motion.footer>
   );
 };

@@ -1,5 +1,68 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useMotionValue, useSpring, useTransform, useScroll } from 'framer-motion';
+import { AnimatedH2 } from '../utils/animations';
+
+/* Parallax-scrolling image within its card */
+const ParallaxImage = ({ src, alt }) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'end start'] });
+  const y = useTransform(scrollYProgress, [0, 1], ['-10%', '10%']);
+  return (
+    <div ref={ref} className="project-image-container">
+      <motion.img src={src} alt={alt} className="project-image" style={{ y, scale: 1.18 }} />
+    </div>
+  );
+};
+
+const TiltCard = ({ children, className, delay }) => {
+  const cardRef = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+
+  const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
+
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ['8deg', '-8deg']);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ['-8deg', '8deg']);
+
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    x.set((e.clientX - rect.left) / rect.width - 0.5);
+    y.set((e.clientY - rect.top) / rect.height - 0.5);
+    /* Spotlight */
+    if (cardRef.current) {
+      cardRef.current.style.setProperty('--cx', `${e.clientX - rect.left}px`);
+      cardRef.current.style.setProperty('--cy', `${e.clientY - rect.top}px`);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+    if (cardRef.current) {
+      cardRef.current.style.setProperty('--cx', '-9999px');
+      cardRef.current.style.setProperty('--cy', '-9999px');
+    }
+  };
+
+  return (
+    <motion.div
+      ref={cardRef}
+      className={className}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: 'preserve-3d' }}
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      whileHover={{ z: 8 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay }}
+    >
+      <div className="card-spotlight" aria-hidden="true" />
+      {children}
+    </motion.div>
+  );
+};
 
 const Projects = () => {
   const projects = [
@@ -59,93 +122,79 @@ const Projects = () => {
     }
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.3,
-        delayChildren: 0.2
-      }
-    }
-  };
+  const EASE = [0.22, 1, 0.36, 1];
 
-  const projectVariants = {
-    hidden: {
-      y: 20,
-      opacity: 0
-    },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        duration: 0.5,
-        ease: "easeOut"
-      }
-    }
+  const tagContainerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.07, delayChildren: 0.2 } }
   };
 
   const tagVariants = {
-    hidden: { scale: 0.8, opacity: 0 },
-    visible: {
-      scale: 1,
-      opacity: 1,
-      transition: {
-        duration: 0.3
-      }
-    }
+    hidden: { opacity: 0, scale: 0.7 },
+    visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: EASE } }
+  };
+
+  const detailContainerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.08, delayChildren: 0.1 } }
+  };
+
+  const detailItemVariants = {
+    hidden: { opacity: 0, x: -16 },
+    visible: { opacity: 1, x: 0, transition: { duration: 0.45, ease: EASE } }
   };
 
   return (
     <motion.section
       id="projects"
       className="section projects-section"
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-100px' }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
     >
-      <h2>Projects</h2>
+      <AnimatedH2>Projects</AnimatedH2>
       <p className="section-description">
         A selection of my recent work in web development, natural language processing, machine learning, health monitoring applications, and computer vision.
       </p>
       <div className="projects-container">
         {projects.map((project, index) => (
-          <motion.div
-            key={index}
-            className="project-card"
-            variants={projectVariants}
-            whileHover={{ y: -5 }}
-          >
-            <div className="project-image-container">
-              <img
-                src={project.image}
-                alt={project.title}
-                className="project-image"
-              />
-            </div>
+          <TiltCard key={index} className="project-card" delay={index * 0.1}>
+            <ParallaxImage src={project.image} alt={project.title} />
             <div className="project-content">
               <h3>{project.title}</h3>
               <p className="project-description">{project.description}</p>
 
               <div className="project-details-container">
                 <h4>Key Features</h4>
-                <ul className="project-details">
+                <motion.ul
+                  className="project-details"
+                  variants={detailContainerVariants}
+                  initial="hidden"
+                  whileInView="visible"
+                  viewport={{ once: true, margin: '-40px' }}
+                >
                   {project.details.map((detail, idx) => (
-                    <li key={idx}>{detail}</li>
+                    <motion.li key={idx} variants={detailItemVariants}>
+                      {detail}
+                    </motion.li>
                   ))}
-                </ul>
+                </motion.ul>
               </div>
 
               <motion.div
                 className="project-technologies"
-                variants={containerVariants}
+                variants={tagContainerVariants}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
               >
                 {project.technologies.map((tech, idx) => (
                   <motion.span
                     key={idx}
                     className="technology-tag"
                     variants={tagVariants}
-                    whileHover={{ y: -2, scale: 1.05 }}
+                    whileHover={{ y: -3, scale: 1.08 }}
                   >
                     {tech}
                   </motion.span>
@@ -157,13 +206,14 @@ const Projects = () => {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="project-link"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
               >
-                <i className="fab fa-github"></i> View on GitHub
+                <i className="fab fa-github"></i>
+                <span>View on GitHub</span>
               </motion.a>
             </div>
-          </motion.div>
+          </TiltCard>
         ))}
       </div>
     </motion.section>
